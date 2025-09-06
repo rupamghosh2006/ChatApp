@@ -10,7 +10,8 @@ const io = new Server(server)
 // Socket.io
 io.on('connection', (socket) => {
     socket.on("user-message", (message) => {
-        io.emit("message", message);
+        // Use broadcast instead of io.emit to avoid sending back to sender
+        socket.broadcast.emit("message", message);
     });
 });
 

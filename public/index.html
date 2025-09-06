@@ -4,39 +4,248 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .message-enter {
+            animation: messageSlideIn 0.3s ease-out;
+        }
+        @keyframes messageSlideIn {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        .typing-indicator {
+            display: none;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+    </style>
 </head>
-<body>
-    <h1>Chatting</h1>
-    <input type="text" id="message" placeholder="Enter message">
-    <button id="sendBtn">Send</button>
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen">
+    <div class="container mx-auto max-w-4xl h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-white/10 backdrop-blur-md border-b border-white/20 p-4 rounded-t-xl mt-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
+                        <i data-lucide="message-circle" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">ChatFlow</h1>
+                        <p class="text-gray-300 text-sm">Real-time messaging</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                    <span class="text-green-400 text-sm font-medium" id="connectionStatus">Connected</span>
+                </div>
+            </div>
+        </header>
 
-    <div id="messages"></div>
+        <!-- Messages Area -->
+        <div class="flex-1 bg-white/5 backdrop-blur-sm border-l border-r border-white/10 overflow-hidden flex flex-col">
+            <div class="flex-1 overflow-y-auto p-6 space-y-4" id="messages">
+                <!-- Welcome message -->
+                <div class="flex justify-center">
+                    <div class="bg-blue-500/20 text-blue-200 px-4 py-2 rounded-full text-sm">
+                        Welcome to ChatFlow! Start chatting below.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Typing indicator -->
+            <div class="typing-indicator px-6 pb-2">
+                <div class="flex items-center space-x-2 text-gray-400">
+                    <div class="flex space-x-1">
+                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                    </div>
+                    <span class="text-sm">Someone is typing...</span>
+                </div>
+            </div>
+        </div>
 
+        <!-- Input Area -->
+        <div class="bg-white/10 backdrop-blur-md border-t border-white/20 p-4 rounded-b-xl mb-4">
+            <div class="flex items-center space-x-3">
+                <!-- Emoji button -->
+                <button class="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200">
+                    <i data-lucide="smile" class="w-5 h-5"></i>
+                </button>
+                
+                <!-- Message input -->
+                <div class="flex-1 relative">
+                    <input 
+                        type="text" 
+                        id="message" 
+                        placeholder="Type your message..." 
+                        class="w-full bg-white/10 border border-white/20 rounded-full px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                        maxlength="500"
+                    >
+                    <div class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs" id="charCount">
+                        0/500
+                    </div>
+                </div>
+                
+                <!-- Send button -->
+                <button 
+                    id="sendBtn" 
+                    class="p-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <i data-lucide="send" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
         const socket = io();
         const sendBtn = document.getElementById("sendBtn");
         const messageInput = document.getElementById("message");
-        const allMessages = document.getElementById("messages")
+        const allMessages = document.getElementById("messages");
+        const connectionStatus = document.getElementById("connectionStatus");
+        const charCount = document.getElementById("charCount");
+        const typingIndicator = document.querySelector(".typing-indicator");
 
+        let messageCount = 0;
+        let isTyping = false;
+        let typingTimeout;
+
+        // Connection status
+        socket.on('connect', () => {
+            connectionStatus.textContent = 'Connected';
+            connectionStatus.className = 'text-green-400 text-sm font-medium';
+        });
+
+        socket.on('disconnect', () => {
+            connectionStatus.textContent = 'Disconnected';
+            connectionStatus.className = 'text-red-400 text-sm font-medium';
+        });
+
+        // Message handling
         socket.on("message", (message) => {
-            const p = document.createElement("p");
-            p.innerText = message;
-            allMessages.appendChild(p);
+            addMessage(message, 'other');
         });
 
-        sendBtn.addEventListener("click", (e)=>{
-            const message = messageInput.value;
-            if (message !== "") {
-                socket.emit("user-message", message);
-                messageInput.value = "";
+        // Character counter
+        messageInput.addEventListener('input', () => {
+            const length = messageInput.value.length;
+            charCount.textContent = `${length}/500`;
+            
+            if (length > 400) {
+                charCount.className = 'absolute right-3 top-1/2 transform -translate-y-1/2 text-red-400 text-xs';
+            } else {
+                charCount.className = 'absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs';
             }
+
+            // Typing indicator logic
+            if (!isTyping && message.trim()) {
+                isTyping = true;
+                socket.emit('typing-start');
+            }
+            
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                if (isTyping) {
+                    isTyping = false;
+                    socket.emit('typing-stop');
+                }
+            }, 1000);
         });
+
+        // Send message function
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message !== "" && message.length <= 500) {
+                socket.emit("user-message", message);
+                addMessage(message, 'self');
+                messageInput.value = "";
+                charCount.textContent = "0/500";
+                charCount.className = 'absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs';
+                
+                // Clear typing indicator
+                if (isTyping) {
+                    isTyping = false;
+                    socket.emit('typing-stop');
+                }
+                clearTimeout(typingTimeout);
+            }
+        }
+
+        // Add message to chat
+        function addMessage(message, type) {
+            messageCount++;
+            
+            const messageDiv = document.createElement("div");
+            messageDiv.className = `flex ${type === 'self' ? 'justify-end' : 'justify-start'} message-enter`;
+            
+            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            messageDiv.innerHTML = `
+                <div class="max-w-xs lg:max-w-md">
+                    <div class="flex items-end space-x-2 ${type === 'self' ? 'flex-row-reverse space-x-reverse' : ''}">
+                        <div class="w-8 h-8 rounded-full ${type === 'self' ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gradient-to-r from-green-500 to-teal-600'} flex items-center justify-center text-white text-sm font-bold">
+                            ${type === 'self' ? 'You' : `#${messageCount}`}
+                        </div>
+                        <div class="relative">
+                            <div class="${type === 'self' ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-white/20'} text-white px-4 py-2 rounded-2xl ${type === 'self' ? 'rounded-br-md' : 'rounded-bl-md'} shadow-lg">
+                                <p class="break-words">${escapeHtml(message)}</p>
+                            </div>
+                            <div class="text-xs text-gray-400 mt-1 ${type === 'self' ? 'text-right' : 'text-left'}">
+                                ${time}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            allMessages.appendChild(messageDiv);
+            allMessages.scrollTop = allMessages.scrollHeight;
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event listeners
+        sendBtn.addEventListener("click", sendMessage);
 
         messageInput.addEventListener("keypress", (e) => {
-            if (e.key === "Enter") {
-                sendBtn.click();
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
             }
+        });
+
+        // Optional: Handle typing indicators from other users
+        socket.on('user-typing-start', () => {
+            typingIndicator.style.display = 'block';
+        });
+
+        socket.on('user-typing-stop', () => {
+            typingIndicator.style.display = 'none';
         });
     </script>
 </body>
