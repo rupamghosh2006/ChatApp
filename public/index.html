@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ControVerse</title>
+  <title>ControVerse - Enhanced Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <style>
@@ -116,57 +116,52 @@
 
   <div class="container mx-auto max-w-4xl h-screen flex flex-col">
     <header class="bg-white/10 backdrop-blur-md border-b border-white/20 p-4 rounded-t-xl mt-4">
-  <div class="flex items-center justify-between">
-    <div class="flex items-center space-x-3">
-      <div class="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
-        <i data-lucide="message-circle" class="w-6 h-6 text-white"></i>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
+            <i data-lucide="message-circle" class="w-6 h-6 text-white"></i>
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold text-white">ControVerse</h1>
+            <p class="text-gray-300 text-sm">Real-time anonymous chat</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-3">
+          <button onclick="toggleUserList()" class="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors" title="View Users">
+            <i data-lucide="users" class="w-5 h-5 text-white"></i>
+          </button>
+          <button onclick="clearChat()" class="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors" title="Clear Chat">
+            <i data-lucide="trash-2" class="w-5 h-5 text-white"></i>
+          </button>
+          <button onclick="openSettings()" class="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors" title="Settings">
+            <i data-lucide="settings" class="w-5 h-5 text-white"></i>
+          </button>
+        </div>
       </div>
-      <div>
-        <h1 class="text-2xl font-bold text-white">ControVerse</h1>
-        <p class="text-gray-300 text-sm">Real-time anonymous chat</p>
+      <!-- Status always below -->
+      <div class="mt-2 flex items-center space-x-2">
+        <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse" id="statusDot"></div>
+        <span class="text-green-400 text-sm font-medium" id="connectionStatus">
+          Connecting...
+        </span>
       </div>
-    </div>
-    <div class="flex items-center space-x-3">
-      <button onclick="toggleUserList()" class="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors" title="View Users">
-        <i data-lucide="users" class="w-5 h-5 text-white"></i>
-      </button>
-      <button onclick="clearChat()" class="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors" title="Clear Chat">
-        <i data-lucide="trash-2" class="w-5 h-5 text-white"></i>
-      </button>
-      <button onclick="openSettings()" class="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors" title="Settings">
-        <i data-lucide="settings" class="w-5 h-5 text-white"></i>
-      </button>
-    </div>
-  </div>
-
-  <!-- Status always below -->
-  <div class="mt-2 flex items-center space-x-2">
-    <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse" id="statusDot"></div>
-    <span class="text-green-400 text-sm font-medium" id="connectionStatus">
-      Connecting...
-    </span>
-  </div>
-</header>
-
+    </header>
 
     <div class="flex-1 bg-white/5 backdrop-blur-sm border-l border-r border-white/10 overflow-hidden flex flex-col">
-  <div class="flex-1 overflow-y-auto p-6 space-y-4" id="messages">
-    <!-- Welcome message -->
-    <div class="flex justify-center">
-      <div class="bg-blue-500/20 text-blue-200 px-4 py-2 rounded-full text-sm text-center space-y-2">
-        <div class="flex items-center justify-center space-x-2">
-          <span>🎭</span>
-          <span>Welcome to ControVerse! Chat anonymously and have fun!</span>
+      <div class="flex-1 overflow-y-auto p-6 space-y-4" id="messages">
+        <!-- Welcome message -->
+        <div class="flex justify-center">
+          <div class="bg-blue-500/20 text-blue-200 px-4 py-2 rounded-full text-sm text-center space-y-2">
+            <div class="flex items-center justify-center space-x-2">
+              <span>🎭</span>
+              <span>Welcome to ControVerse! Chat anonymously and have fun!</span>
+            </div>
+          </div>
         </div>
-        
       </div>
+      <!-- Typing indicators -->
+      <div id="typingIndicators" class="px-6 pb-2 space-y-1"></div>
     </div>
-  </div>
-
-  <!-- Typing indicators -->
-  <div id="typingIndicators" class="px-6 pb-2 space-y-1"></div>
-</div>
-
 
     <!-- Input Area -->
     <div class="bg-white/10 backdrop-blur-md border-t border-white/20 p-4 rounded-b-xl mb-4">
@@ -216,7 +211,6 @@
     </div>
   </div>
 
-  <!-- Scripts -->
   <script src="/socket.io/socket.io.js"></script>
   <script>
     // Initialize Lucide icons
@@ -224,7 +218,7 @@
 
     // Socket.IO connection
     const socket = io();
-    
+
     // DOM Elements
     const sendBtn = document.getElementById("sendBtn");
     const messageInput = document.getElementById("message");
@@ -254,15 +248,15 @@
       const sound = localStorage.getItem('controverse_sound');
       const autoScroll = localStorage.getItem('controverse_autoscroll');
       const timestamps = localStorage.getItem('controverse_timestamps');
-      
+
       if (nickname) {
         document.getElementById('nicknameInput').value = nickname;
       }
-      
+
       soundEnabled = sound !== null ? sound === 'true' : true;
       autoScrollEnabled = autoScroll !== null ? autoScroll === 'true' : true;
       showTimestamps = timestamps !== null ? timestamps === 'true' : true;
-      
+
       document.getElementById('soundToggle').checked = soundEnabled;
       document.getElementById('autoScrollToggle').checked = autoScrollEnabled;
       document.getElementById('timestampToggle').checked = showTimestamps;
@@ -271,22 +265,22 @@
     // Play notification sound
     function playSound() {
       if (!soundEnabled) return;
-      
+
       try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
-        
+
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
-        
+
         oscillator.frequency.value = 800;
         oscillator.type = 'sine';
-        
+
         gainNode.gain.setValueAtTime(0, audioContext.currentTime);
         gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.01);
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
-        
+
         oscillator.start(audioContext.currentTime);
         oscillator.stop(audioContext.currentTime + 0.3);
       } catch (e) {
@@ -303,12 +297,13 @@
         type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
       }`;
       notification.textContent = message;
-      
+
       notifications.appendChild(notification);
-      
+
       setTimeout(() => {
         if (notification.parentNode) {
-          notification.remove();
+          notification.style.animation = 'slideOutRight 0.3s ease-out';
+          setTimeout(() => notification.remove(), 300);
         }
       }, 5000);
     }
@@ -321,7 +316,7 @@
 
     // Socket event handlers
     socket.on("user-count", (count) => {
-      connectionStatus.innerText = `Connected - ${count}`;
+      connectionStatus.innerText = `Connected - ${count} user${count !== 1 ? 's' : ''} online`;
     });
 
     socket.on("user-info", (userInfo) => {
@@ -332,6 +327,12 @@
     });
 
     socket.on("message-history", (history) => {
+      // Clear welcome message first
+      const welcomeMsg = allMessages.querySelector('.flex.justify-center');
+      if (welcomeMsg) {
+        welcomeMsg.remove();
+      }
+
       history.forEach(msgData => {
         addMessage(msgData, msgData.userId === currentUser?.id ? "self" : "other", false);
       });
@@ -403,11 +404,11 @@
       const message = messageInput.value.trim();
       if (message !== "" && message.length <= 500) {
         const msgData = {
-          id: Date.now() + Math.random(),
+          id: Date.now() + Math.random().toString(36),
           text: message,
           replyTo: replyTo
         };
-        
+
         socket.emit("user-message", msgData);
         addMessage({
           ...msgData, 
@@ -422,7 +423,7 @@
         charCount.className = "absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs";
         replyTo = null;
         replyBox.classList.add("hidden");
-        
+
         if (isTyping) {
           isTyping = false;
           socket.emit("typing-stop");
@@ -472,8 +473,8 @@
                 <p class="msg-text break-words">${escapeHtml(msgData.text)}</p>
                 ${editedText}
               </div>
-              ${showTimestamps ? `<div class="text-xs text-gray-400 mt-1 ${type === 'self' ? 'text-right' : 'text-left'}">${time}</div>` : ''}
-              
+              ${showTimestamps ? `<div class="text-xs text-gray-400 mt-1 ${type === 'self' ? 'text-right' : 'text-left'}" style="display: ${showTimestamps ? 'block' : 'none'}">${time}</div>` : ''}
+
               <!-- Message actions -->
               <div class="opacity-0 group-hover:opacity-100 transition-opacity absolute ${type === 'self' ? 'left-0' : 'right-0'} -top-2 flex space-x-1">
                 <button class="text-xs text-blue-300 hover:text-blue-500 bg-black/40 backdrop-blur px-2 py-1 rounded" onclick="setReply('${msgData.id}','${escapeHtml(msgData.text)}','${displayName}')">Reply</button>
@@ -488,7 +489,7 @@
       `;
 
       allMessages.appendChild(messageDiv);
-      
+
       if (shouldScroll && autoScrollEnabled) {
         allMessages.scrollTop = allMessages.scrollHeight;
       }
@@ -531,7 +532,7 @@
     function updateTypingIndicator() {
       const typingArray = Array.from(typingUsers);
       typingIndicators.innerHTML = '';
-      
+
       if (typingArray.length > 0) {
         const indicator = document.createElement('div');
         indicator.className = 'flex items-center space-x-2 text-gray-400 typing-indicator';
@@ -561,7 +562,7 @@
     function toggleUserList() {
       const sidebar = document.getElementById('userListSidebar');
       const isOpen = !sidebar.classList.contains('translate-x-full');
-      
+
       if (isOpen) {
         sidebar.classList.add('translate-x-full');
       } else {
@@ -604,26 +605,26 @@
       const soundToggle = document.getElementById('soundToggle').checked;
       const autoScrollToggle = document.getElementById('autoScrollToggle').checked;
       const timestampToggle = document.getElementById('timestampToggle').checked;
-      
+
       if (nickname && nickname !== currentUser?.nickname) {
         socket.emit("change-nickname", nickname);
         localStorage.setItem('controverse_nickname', nickname);
       }
-      
+
       soundEnabled = soundToggle;
       autoScrollEnabled = autoScrollToggle;
       showTimestamps = timestampToggle;
-      
+
       localStorage.setItem('controverse_sound', soundEnabled.toString());
       localStorage.setItem('controverse_autoscroll', autoScrollEnabled.toString());
       localStorage.setItem('controverse_timestamps', showTimestamps.toString());
-      
+
       // Update existing messages to show/hide timestamps
       const timeElements = document.querySelectorAll('.text-xs.text-gray-400.mt-1');
       timeElements.forEach(el => {
         el.style.display = showTimestamps ? 'block' : 'none';
       });
-      
+
       closeSettings();
       showNotification('Settings saved!', 'success');
     }
@@ -636,7 +637,7 @@
 
     // Event Listeners
     sendBtn.addEventListener("click", sendMessage);
-    
+
     messageInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -651,14 +652,17 @@
           const cursorPos = messageInput.selectionStart;
           const textBefore = messageInput.value.substring(0, cursorPos);
           const textAfter = messageInput.value.substring(cursorPos);
-          
+
           messageInput.value = textBefore + emoji.textContent + textAfter;
           messageInput.focus();
           messageInput.setSelectionRange(cursorPos + emoji.textContent.length, cursorPos + emoji.textContent.length);
-          
+
           // Trigger input event to update character count
           const event = new Event('input', { bubbles: true });
           messageInput.dispatchEvent(event);
+
+          // Hide emoji picker
+          document.getElementById('emojiPicker').classList.add('hidden');
         });
       });
     });
@@ -667,7 +671,7 @@
     document.addEventListener('click', (e) => {
       const emojiPicker = document.getElementById('emojiPicker');
       const emojiButton = e.target.closest('[onclick="toggleEmojiPicker()"]');
-      
+
       if (!emojiPicker.contains(e.target) && !emojiButton && !emojiPicker.classList.contains('hidden')) {
         emojiPicker.classList.add('hidden');
       }
@@ -676,8 +680,8 @@
     // Close settings modal when clicking outside
     document.addEventListener('click', (e) => {
       const modal = document.getElementById('settingsModal');
-      const modalContent = modal.querySelector('div.bg-white\\/10');
-      
+      const modalContent = modal.querySelector('div.bg-white\/10');
+
       if (modal.classList.contains('flex') && !modalContent.contains(e.target)) {
         closeSettings();
       }
@@ -687,7 +691,7 @@
     document.addEventListener('click', (e) => {
       const sidebar = document.getElementById('userListSidebar');
       const userButton = e.target.closest('[onclick="toggleUserList()"]');
-      
+
       if (!sidebar.contains(e.target) && !userButton && !sidebar.classList.contains('translate-x-full')) {
         toggleUserList();
       }
@@ -715,7 +719,7 @@
 
     socket.on("nickname-update", (data) => {
       showNotification(`${data.oldNickname} is now ${data.newNickname}`, 'info');
-      
+
       // Update typing indicator if user was typing
       if (typingUsers.has(data.oldNickname)) {
         typingUsers.delete(data.oldNickname);
@@ -740,7 +744,7 @@
       const messageElement = document.querySelector(`[data-id="${data.messageId}"] .msg-text`);
       if (messageElement) {
         messageElement.textContent = data.newText;
-        
+
         // Add or update edited indicator
         let editedSpan = messageElement.parentElement.querySelector('.text-xs.opacity-60');
         if (!editedSpan) {
@@ -754,12 +758,12 @@
 
     socket.on("user-list", (users) => {
       userList.innerHTML = '';
-      
+
       if (users.length === 0) {
         userList.innerHTML = '<div class="text-gray-400 text-sm text-center py-4">No other users online</div>';
         return;
       }
-      
+
       users.forEach(user => {
         const userElement = document.createElement('div');
         userElement.className = 'flex items-center space-x-3 p-3 bg-white/10 rounded-lg hover:bg-white/20 transition-colors';
@@ -789,15 +793,15 @@
       const cursorPos = messageInput.selectionStart;
       const textBefore = messageInput.value.substring(0, cursorPos);
       const textAfter = messageInput.value.substring(cursorPos);
-      
+
       messageInput.value = textBefore + mention + textAfter;
       messageInput.focus();
       messageInput.setSelectionRange(cursorPos + mention.length, cursorPos + mention.length);
-      
+
       // Trigger input event
       const event = new Event('input', { bubbles: true });
       messageInput.dispatchEvent(event);
-      
+
       // Close user list
       toggleUserList();
     }
@@ -829,7 +833,7 @@
 
     // Heartbeat to maintain connection
     let heartbeatInterval;
-    
+
     function startHeartbeat() {
       heartbeatInterval = setInterval(() => {
         if (socket.connected) {
@@ -861,19 +865,19 @@
         e.preventDefault();
         clearChat();
       }
-      
+
       // Ctrl/Cmd + , to open settings
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault();
         openSettings();
       }
-      
+
       // Escape to close modals/panels
       if (e.key === 'Escape') {
         const settingsModal = document.getElementById('settingsModal');
         const userListSidebar = document.getElementById('userListSidebar');
         const emojiPicker = document.getElementById('emojiPicker');
-        
+
         if (settingsModal.classList.contains('flex')) {
           closeSettings();
         } else if (!userListSidebar.classList.contains('translate-x-full')) {
@@ -916,19 +920,6 @@
     window.deleteMessage = deleteMessage;
     window.editMessage = editMessage;
     window.mentionUser = mentionUser;
-
-    // Service Worker registration (for offline support)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then((registration) => {
-            console.log('SW registered: ', registration);
-          })
-          .catch((registrationError) => {
-            console.log('SW registration failed: ', registrationError);
-          });
-      });
-    }
 
     // Visibility API to handle tab focus
     document.addEventListener('visibilitychange', () => {
