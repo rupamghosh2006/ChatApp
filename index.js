@@ -8,7 +8,17 @@ const server = http.createServer(app);
 const io = new Server(server)
 
 // Socket.io
+let usersCount = 0;
 io.on('connection', (socket) => {
+
+    usersCount++;
+    io.emit("user-count", usersCount);
+
+    socket.on("disconnect", () => {
+        usersCount--;
+        io.emit("user-count", usersCount);
+    });
+    
     socket.on("user-message", (message) => {
         // Use broadcast instead of io.emit to avoid sending back to sender
         socket.broadcast.emit("message", message);

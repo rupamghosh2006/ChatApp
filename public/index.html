@@ -50,7 +50,7 @@
                 </div>
                 <div class="flex items-center space-x-2">
                     <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                    <span class="text-green-400 text-sm font-medium" id="connectionStatus">Connected</span>
+                    <span class="text-green-400 text-sm font-medium" id="connectionStatus">Connected - 0</span>
                 </div>
             </div>
         </header>
@@ -129,6 +129,11 @@
         let messageCount = 0;
         let isTyping = false;
         let typingTimeout;
+
+        //user count
+        socket.on("user-count", (count) => {
+            connectionStatus.innerText = `Connected - ${count}`
+        })
 
         // Connection status
         socket.on('connect', () => {
