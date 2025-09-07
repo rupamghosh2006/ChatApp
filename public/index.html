@@ -1,257 +1,961 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ControVerse</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .message-enter {
-            animation: messageSlideIn 0.3s ease-out;
-        }
-        @keyframes messageSlideIn {
-            from {
-                transform: translateY(20px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-        .typing-indicator {
-            display: none;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ControVerse</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .message-enter { animation: messageSlideIn 0.3s ease-out; }
+    @keyframes messageSlideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .typing-indicator { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100% { opacity:0.5 } 50%{ opacity:1 } }
+    .shake { animation: shake 0.5s; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    .notification { animation: slideInRight 0.3s ease-out; }
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOutRight {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(100%); opacity: 0; }
+    }
+    .user-list { max-height: 200px; overflow-y: auto; }
+    .user-list::-webkit-scrollbar { width: 4px; }
+    .user-list::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); border-radius: 2px; }
+    .user-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 2px; }
+    .toggle {
+      appearance: none;
+      width: 3rem;
+      height: 1.5rem;
+      border-radius: 9999px;
+      background-color: #374151;
+      position: relative;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .toggle:checked {
+      background-color: #3b82f6;
+    }
+    .toggle::before {
+      content: '';
+      position: absolute;
+      width: 1.25rem;
+      height: 1.25rem;
+      border-radius: 50%;
+      background-color: white;
+      top: 0.125rem;
+      left: 0.125rem;
+      transition: transform 0.2s;
+    }
+    .toggle:checked::before {
+      transform: translateX(1.5rem);
+    }
+  </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen">
-    <div class="container mx-auto max-w-4xl h-screen flex flex-col">
-        <!-- Header -->
-        <header class="bg-white/10 backdrop-blur-md border-b border-white/20 p-4 rounded-t-xl mt-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
-                        <i data-lucide="message-circle" class="w-6 h-6 text-white"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-white">ControVerse</h1>
-                        <p class="text-gray-300 text-sm">Real-time messaging</p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                    <span class="text-green-400 text-sm font-medium" id="connectionStatus">Connected - 0</span>
-                </div>
-            </div>
-        </header>
+  <!-- Notifications Container -->
+  <div id="notifications" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
-        <!-- Messages Area -->
-        <div class="flex-1 bg-white/5 backdrop-blur-sm border-l border-r border-white/10 overflow-hidden flex flex-col">
-            <div class="flex-1 overflow-y-auto p-6 space-y-4" id="messages">
-                <!-- Welcome message -->
-                <div class="flex justify-center">
-                    <div class="bg-blue-500/20 text-blue-200 px-4 py-2 rounded-full text-sm">
-                        🎭 Start chatting below — stay anonymous, no strings attached, just pure fun!
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Typing indicator -->
-            <div class="typing-indicator px-6 pb-2">
-                <div class="flex items-center space-x-2 text-gray-400">
-                    <div class="flex space-x-1">
-                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                    </div>
-                    <span class="text-sm">Someone is typing...</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Input Area -->
-        <div class="bg-white/10 backdrop-blur-md border-t border-white/20 p-4 rounded-b-xl mb-4">
-            <div class="flex items-center space-x-3">
-                <!-- Emoji button -->
-                <button class="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-all duration-200">
-                    <i data-lucide="smile" class="w-5 h-5"></i>
-                </button>
-                
-                <!-- Message input -->
-                <div class="flex-1 relative">
-                    <input 
-                        type="text" 
-                        id="message" 
-                        placeholder="Type your message..." 
-                        class="w-full bg-white/10 border border-white/20 rounded-full px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                        maxlength="500"
-                    >
-                    <div class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs" id="charCount">
-                        0/500
-                    </div>
-                </div>
-                
-                <!-- Send button -->
-                <button 
-                    id="sendBtn" 
-                    class="p-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <i data-lucide="send" class="w-5 h-5"></i>
-                </button>
-            </div>
-        </div>
+  <!-- User List Sidebar -->
+  <div id="userListSidebar" class="fixed right-0 top-0 h-full w-80 bg-black/40 backdrop-blur-md transform translate-x-full transition-transform duration-300 z-40 border-l border-white/20">
+    <div class="p-4">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-white font-semibold">Active Users</h3>
+        <button onclick="toggleUserList()" class="text-white hover:text-red-400">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="userList" class="user-list space-y-2"></div>
     </div>
+  </div>
 
-    <!-- Scripts -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center">
+    <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 w-96 border border-white/20">
+      <h3 class="text-white text-xl font-semibold mb-4">Settings</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="text-white text-sm font-medium block mb-2">Nickname</label>
+          <input type="text" id="nicknameInput" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400" maxlength="20" placeholder="Enter your nickname">
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-white text-sm">Sound Notifications</span>
+          <input type="checkbox" id="soundToggle" class="toggle" checked>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-white text-sm">Auto-scroll to new messages</span>
+          <input type="checkbox" id="autoScrollToggle" class="toggle" checked>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-white text-sm">Show timestamps</span>
+          <input type="checkbox" id="timestampToggle" class="toggle" checked>
+        </div>
+      </div>
+      <div class="flex space-x-3 mt-6">
+        <button onclick="saveSettings()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg transition-colors">
+          Save
+        </button>
+        <button onclick="closeSettings()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container mx-auto max-w-4xl h-screen flex flex-col">
+    <header class="bg-white/10 backdrop-blur-md border-b border-white/20 p-4 rounded-t-xl mt-4">
+  <div class="flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
+        <i data-lucide="message-circle" class="w-6 h-6 text-white"></i>
+      </div>
+      <div>
+        <h1 class="text-2xl font-bold text-white">ControVerse</h1>
+        <p class="text-gray-300 text-sm">Real-time anonymous chat</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-3">
+      <button onclick="toggleUserList()" class="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors" title="View Users">
+        <i data-lucide="users" class="w-5 h-5 text-white"></i>
+      </button>
+      <button onclick="clearChat()" class="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors" title="Clear Chat">
+        <i data-lucide="trash-2" class="w-5 h-5 text-white"></i>
+      </button>
+      <button onclick="openSettings()" class="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors" title="Settings">
+        <i data-lucide="settings" class="w-5 h-5 text-white"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Status always below -->
+  <div class="mt-2 flex items-center space-x-2">
+    <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse" id="statusDot"></div>
+    <span class="text-green-400 text-sm font-medium" id="connectionStatus">
+      Connecting...
+    </span>
+  </div>
+</header>
+
+
+    <div class="flex-1 bg-white/5 backdrop-blur-sm border-l border-r border-white/10 overflow-hidden flex flex-col">
+  <div class="flex-1 overflow-y-auto p-6 space-y-4" id="messages">
+    <!-- Welcome message -->
+    <div class="flex justify-center">
+      <div class="bg-blue-500/20 text-blue-200 px-4 py-2 rounded-full text-sm text-center space-y-2">
+        <div class="flex items-center justify-center space-x-2">
+          <span>🎭</span>
+          <span>Welcome to ControVerse! Chat anonymously and have fun!</span>
+        </div>
         
-        const socket = io();
-        const sendBtn = document.getElementById("sendBtn");
-        const messageInput = document.getElementById("message");
-        const allMessages = document.getElementById("messages");
-        const connectionStatus = document.getElementById("connectionStatus");
-        const charCount = document.getElementById("charCount");
-        const typingIndicator = document.querySelector(".typing-indicator");
+      </div>
+    </div>
+  </div>
 
-        let messageCount = 0;
-        let isTyping = false;
-        let typingTimeout;
+  <!-- Typing indicators -->
+  <div id="typingIndicators" class="px-6 pb-2 space-y-1"></div>
+</div>
 
-        //user count
-        socket.on("user-count", (count) => {
-            connectionStatus.innerText = `Connected - ${count}`
-        })
 
-        // Connection status
-        socket.on('connect', () => {
-            connectionStatus.textContent = 'Connected';
-            connectionStatus.className = 'text-green-400 text-sm font-medium';
-        });
+    <!-- Input Area -->
+    <div class="bg-white/10 backdrop-blur-md border-t border-white/20 p-4 rounded-b-xl mb-4">
+      <div id="replyBox" class="hidden mb-2 p-2 bg-white/20 text-white text-sm rounded-lg flex justify-between items-center">
+        <span class="truncate flex-1"></span>
+        <button onclick="cancelReply()" class="ml-2 text-red-400 hover:text-red-600 flex-shrink-0">✖</button>
+      </div>
+      <div class="flex items-center space-x-3">
+        <div class="flex-1 relative">
+          <input type="text" id="message" placeholder="Type your message..."
+            class="w-full bg-white/10 border border-white/20 rounded-full px-4 py-3 pr-16 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            maxlength="500" autocomplete="off">
+          <div class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs" id="charCount">0/500</div>
+        </div>
+        <button onclick="toggleEmojiPicker()" class="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-all duration-200" title="Add Emoji">
+          <i data-lucide="smile" class="w-5 h-5 text-white"></i>
+        </button>
+        <button id="sendBtn" class="p-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed" title="Send Message">
+          <i data-lucide="send" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <!-- Emoji Picker -->
+      <div id="emojiPicker" class="hidden mt-2 p-3 bg-white/10 rounded-lg border border-white/20">
+        <div class="grid grid-cols-8 gap-2 text-2xl">
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">😀</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">😂</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">😍</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">🤔</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">😎</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">🔥</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">💯</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">👍</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">❤️</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">💀</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">🎉</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">🤝</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">🙏</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">💪</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">🎭</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">⚡</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">🚀</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">⭐</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">🌟</span>
+          <span class="emoji cursor-pointer hover:bg-white/20 p-2 rounded text-center">💫</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        socket.on('disconnect', () => {
-            connectionStatus.textContent = 'Disconnected';
-            connectionStatus.className = 'text-red-400 text-sm font-medium';
-        });
+  <!-- Scripts -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
 
-        // Message handling
-        socket.on("message", (message) => {
-            addMessage(message, 'other');
-        });
+    // Socket.IO connection
+    const socket = io();
+    
+    // DOM Elements
+    const sendBtn = document.getElementById("sendBtn");
+    const messageInput = document.getElementById("message");
+    const allMessages = document.getElementById("messages");
+    const connectionStatus = document.getElementById("connectionStatus");
+    const statusDot = document.getElementById("statusDot");
+    const charCount = document.getElementById("charCount");
+    const typingIndicators = document.getElementById("typingIndicators");
+    const replyBox = document.getElementById("replyBox");
+    const notifications = document.getElementById("notifications");
+    const userList = document.getElementById("userList");
 
-        // Character counter
-        messageInput.addEventListener('input', () => {
-            const length = messageInput.value.length;
-            charCount.textContent = `${length}/500`;
-            
-            if (length > 400) {
-                charCount.className = 'absolute right-3 top-1/2 transform -translate-y-1/2 text-red-400 text-xs';
-            } else {
-                charCount.className = 'absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs';
-            }
+    // Application state
+    let messageCount = 0;
+    let isTyping = false;
+    let typingTimeout;
+    let replyTo = null;
+    let currentUser = null;
+    let soundEnabled = true;
+    let autoScrollEnabled = true;
+    let showTimestamps = true;
+    let typingUsers = new Set();
 
-            // Typing indicator logic
-            if (!isTyping && message.trim()) {
-                isTyping = true;
-                socket.emit('typing-start');
-            }
-            
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => {
-                if (isTyping) {
-                    isTyping = false;
-                    socket.emit('typing-stop');
-                }
-            }, 1000);
-        });
+    // Load settings from localStorage
+    function loadSettings() {
+      const nickname = localStorage.getItem('controverse_nickname');
+      const sound = localStorage.getItem('controverse_sound');
+      const autoScroll = localStorage.getItem('controverse_autoscroll');
+      const timestamps = localStorage.getItem('controverse_timestamps');
+      
+      if (nickname) {
+        document.getElementById('nicknameInput').value = nickname;
+      }
+      
+      soundEnabled = sound !== null ? sound === 'true' : true;
+      autoScrollEnabled = autoScroll !== null ? autoScroll === 'true' : true;
+      showTimestamps = timestamps !== null ? timestamps === 'true' : true;
+      
+      document.getElementById('soundToggle').checked = soundEnabled;
+      document.getElementById('autoScrollToggle').checked = autoScrollEnabled;
+      document.getElementById('timestampToggle').checked = showTimestamps;
+    }
 
-        // Send message function
-        function sendMessage() {
-            const message = messageInput.value.trim();
-            if (message !== "" && message.length <= 500) {
-                socket.emit("user-message", message);
-                addMessage(message, 'self');
-                messageInput.value = "";
-                charCount.textContent = "0/500";
-                charCount.className = 'absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs';
-                
-                // Clear typing indicator
-                if (isTyping) {
-                    isTyping = false;
-                    socket.emit('typing-stop');
-                }
-                clearTimeout(typingTimeout);
-            }
+    // Play notification sound
+    function playSound() {
+      if (!soundEnabled) return;
+      
+      try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+      } catch (e) {
+        console.log('Audio not available');
+      }
+    }
+
+    // Show notification
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.className = `notification p-3 rounded-lg text-white text-sm max-w-sm shadow-lg ${
+        type === 'success' ? 'bg-green-500' : 
+        type === 'error' ? 'bg-red-500' : 
+        type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+      }`;
+      notification.textContent = message;
+      
+      notifications.appendChild(notification);
+      
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.remove();
         }
+      }, 5000);
+    }
 
-        // Add message to chat
-        function addMessage(message, type) {
-            messageCount++;
-            
-            const messageDiv = document.createElement("div");
-            messageDiv.className = `flex ${type === 'self' ? 'justify-end' : 'justify-start'} message-enter`;
-            
-            const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            
-            messageDiv.innerHTML = `
-                <div class="max-w-xs lg:max-w-md">
-                    <div class="flex items-end space-x-2 ${type === 'self' ? 'flex-row-reverse space-x-reverse' : ''}">
-                        <div class="w-8 h-8 rounded-full ${type === 'self' ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gradient-to-r from-green-500 to-teal-600'} flex items-center justify-center text-white text-sm font-bold">
-                            ${type === 'self' ? 'You' : `#${messageCount}`}
-                        </div>
-                        <div class="relative">
-                            <div class="${type === 'self' ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-white/20'} text-white px-4 py-2 rounded-2xl ${type === 'self' ? 'rounded-br-md' : 'rounded-bl-md'} shadow-lg">
-                                <p class="break-words">${escapeHtml(message)}</p>
-                            </div>
-                            <div class="text-xs text-gray-400 mt-1 ${type === 'self' ? 'text-right' : 'text-left'}">
-                                ${time}
-                            </div>
-                        </div>
-                    </div>
+    // Initialize application
+    function init() {
+      loadSettings();
+      messageInput.focus();
+    }
+
+    // Socket event handlers
+    socket.on("user-count", (count) => {
+      connectionStatus.innerText = `Connected - ${count}`;
+    });
+
+    socket.on("user-info", (userInfo) => {
+      currentUser = userInfo;
+      if (!document.getElementById('nicknameInput').value) {
+        document.getElementById('nicknameInput').value = userInfo.nickname;
+      }
+    });
+
+    socket.on("message-history", (history) => {
+      history.forEach(msgData => {
+        addMessage(msgData, msgData.userId === currentUser?.id ? "self" : "other", false);
+      });
+    });
+
+    socket.on("connect", () => {
+      connectionStatus.textContent = "Connected";
+      connectionStatus.className = "text-green-400 text-sm font-medium";
+      statusDot.className = "w-3 h-3 bg-green-400 rounded-full animate-pulse";
+      showNotification("Connected to ControVerse!", "success");
+    });
+
+    socket.on("disconnect", () => {
+      connectionStatus.textContent = "Disconnected";
+      connectionStatus.className = "text-red-400 text-sm font-medium";
+      statusDot.className = "w-3 h-3 bg-red-400 rounded-full";
+      showNotification("Disconnected from server", "error");
+    });
+
+    socket.on("message", (msgData) => {
+      addMessage(msgData, "other", true);
+      playSound();
+    });
+
+    socket.on("user-joined", (userData) => {
+      showNotification(`${userData.nickname} joined the chat`, "info");
+      updateUserList();
+    });
+
+    socket.on("user-left", (userData) => {
+      showNotification(`${userData.nickname} left the chat`, "warning");
+      typingUsers.delete(userData.nickname);
+      updateTypingIndicator();
+      updateUserList();
+    });
+
+    socket.on("rate-limited", (message) => {
+      showNotification(message, "warning");
+      messageInput.classList.add("shake");
+      setTimeout(() => messageInput.classList.remove("shake"), 500);
+    });
+
+    // Handle typing indicators
+    messageInput.addEventListener("input", () => {
+      const length = messageInput.value.length;
+      charCount.textContent = `${length}/500`;
+
+      if (length > 400) {
+        charCount.className = "absolute right-3 top-1/2 transform -translate-y-1/2 text-red-400 text-xs";
+      } else {
+        charCount.className = "absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs";
+      }
+
+      if (!isTyping && messageInput.value.trim()) {
+        isTyping = true;
+        socket.emit("typing-start");
+      }
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        if (isTyping) {
+          isTyping = false;
+          socket.emit("typing-stop");
+        }
+      }, 1000);
+    });
+
+    // Send message function
+    function sendMessage() {
+      const message = messageInput.value.trim();
+      if (message !== "" && message.length <= 500) {
+        const msgData = {
+          id: Date.now() + Math.random(),
+          text: message,
+          replyTo: replyTo
+        };
+        
+        socket.emit("user-message", msgData);
+        addMessage({
+          ...msgData, 
+          userId: currentUser?.id, 
+          nickname: currentUser?.nickname, 
+          color: currentUser?.color,
+          timestamp: new Date().toISOString()
+        }, "self", true);
+
+        messageInput.value = "";
+        charCount.textContent = "0/500";
+        charCount.className = "absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs";
+        replyTo = null;
+        replyBox.classList.add("hidden");
+        
+        if (isTyping) {
+          isTyping = false;
+          socket.emit("typing-stop");
+        }
+      }
+    }
+
+    // Add message to chat
+    function addMessage(msgData, type, shouldScroll = true) {
+      messageCount++;
+      const messageDiv = document.createElement("div");
+      messageDiv.className = `flex ${type === 'self' ? 'justify-end' : 'justify-start'} message-enter`;
+      messageDiv.dataset.id = msgData.id;
+
+      const timestamp = new Date(msgData.timestamp || new Date());
+      const time = timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const userColor = msgData.color || (type === 'self' ? '#6366f1' : '#10b981');
+
+      let replyHtml = "";
+      if (msgData.replyTo) {
+        const repliedMsg = document.querySelector(`[data-id="${msgData.replyTo}"] .msg-text`);
+        if (repliedMsg) {
+          const replyText = repliedMsg.textContent;
+          replyHtml = `
+            <div class="text-xs text-gray-300 border-l-2 border-blue-400 pl-2 mb-2 opacity-70 bg-white/5 rounded-r p-1">
+              <span class="opacity-60">↳ Reply to:</span> ${escapeHtml(replyText.substring(0, 50))}${replyText.length > 50 ? '...' : ''}
+            </div>
+          `;
+        }
+      }
+
+      const editedText = msgData.edited ? '<span class="text-xs opacity-60 ml-2">(edited)</span>' : '';
+      const displayName = msgData.nickname || (type === 'self' ? 'You' : `Guest#${messageCount}`);
+
+      messageDiv.innerHTML = `
+        <div class="max-w-xs lg:max-w-md">
+          <div class="flex items-end space-x-2 ${type === 'self' ? 'flex-row-reverse space-x-reverse' : ''}">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background: ${userColor}">
+              ${type === 'self' ? '👤' : '🎭'}
+            </div>
+            <div class="relative group">
+              <div class="${type === 'self' ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-white/20'} text-white px-4 py-3 rounded-2xl ${type === 'self' ? 'rounded-br-md' : 'rounded-bl-md'} shadow-lg">
+                <div class="text-xs font-medium mb-1 opacity-80" style="color: ${type === 'self' ? '#e0e7ff' : userColor}">
+                  ${displayName}
                 </div>
-            `;
-            
-            allMessages.appendChild(messageDiv);
-            allMessages.scrollTop = allMessages.scrollHeight;
+                ${replyHtml}
+                <p class="msg-text break-words">${escapeHtml(msgData.text)}</p>
+                ${editedText}
+              </div>
+              ${showTimestamps ? `<div class="text-xs text-gray-400 mt-1 ${type === 'self' ? 'text-right' : 'text-left'}">${time}</div>` : ''}
+              
+              <!-- Message actions -->
+              <div class="opacity-0 group-hover:opacity-100 transition-opacity absolute ${type === 'self' ? 'left-0' : 'right-0'} -top-2 flex space-x-1">
+                <button class="text-xs text-blue-300 hover:text-blue-500 bg-black/40 backdrop-blur px-2 py-1 rounded" onclick="setReply('${msgData.id}','${escapeHtml(msgData.text)}','${displayName}')">Reply</button>
+                ${type === 'self' ? `
+                  <button class="text-xs text-yellow-300 hover:text-yellow-500 bg-black/40 backdrop-blur px-2 py-1 rounded" onclick="editMessage('${msgData.id}')">Edit</button>
+                  <button class="text-xs text-red-300 hover:text-red-500 bg-black/40 backdrop-blur px-2 py-1 rounded" onclick="deleteMessage('${msgData.id}')">Delete</button>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      allMessages.appendChild(messageDiv);
+      
+      if (shouldScroll && autoScrollEnabled) {
+        allMessages.scrollTop = allMessages.scrollHeight;
+      }
+    }
+
+    // Set reply
+    function setReply(id, text, nickname) {
+      replyTo = id;
+      replyBox.classList.remove("hidden");
+      replyBox.querySelector('span').innerHTML = `Replying to <strong>${escapeHtml(nickname)}</strong>: ${escapeHtml(text.substring(0, 50))}${text.length > 50 ? '...' : ''}`;
+      messageInput.focus();
+    }
+
+    // Cancel reply
+    function cancelReply() {
+      replyTo = null;
+      replyBox.classList.add("hidden");
+    }
+
+    // Delete message
+    function deleteMessage(messageId) {
+      if (confirm('Are you sure you want to delete this message?')) {
+        socket.emit("delete-message", messageId);
+      }
+    }
+
+    // Edit message
+    function editMessage(messageId) {
+      const messageElement = document.querySelector(`[data-id="${messageId}"] .msg-text`);
+      if (messageElement) {
+        const currentText = messageElement.textContent;
+        const newText = prompt('Edit your message:', currentText);
+        if (newText && newText.trim() !== currentText && newText.trim().length <= 500) {
+          socket.emit("edit-message", { messageId, newText: newText.trim() });
         }
+      }
+    }
 
-        // Escape HTML to prevent XSS
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // Event listeners
-        sendBtn.addEventListener("click", sendMessage);
-
-        messageInput.addEventListener("keypress", (e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
+    // Update typing indicator
+    function updateTypingIndicator() {
+      const typingArray = Array.from(typingUsers);
+      typingIndicators.innerHTML = '';
+      
+      if (typingArray.length > 0) {
+        const indicator = document.createElement('div');
+        indicator.className = 'flex items-center space-x-2 text-gray-400 typing-indicator';
+        indicator.innerHTML = `
+          <div class="flex space-x-1">
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+          </div>
+          <span class="text-sm">
+            ${typingArray.length === 1 ? 
+              `${typingArray[0]} is typing...` : 
+              `${typingArray.length} users are typing...`
             }
-        });
+          </span>
+        `;
+        typingIndicators.appendChild(indicator);
+      }
+    }
 
-        // Optional: Handle typing indicators from other users
-        socket.on('user-typing-start', () => {
-            typingIndicator.style.display = 'block';
-        });
+    // Update user list
+    function updateUserList() {
+      socket.emit("request-user-list");
+    }
 
-        socket.on('user-typing-stop', () => {
-            typingIndicator.style.display = 'none';
+    // UI Functions
+    function toggleUserList() {
+      const sidebar = document.getElementById('userListSidebar');
+      const isOpen = !sidebar.classList.contains('translate-x-full');
+      
+      if (isOpen) {
+        sidebar.classList.add('translate-x-full');
+      } else {
+        sidebar.classList.remove('translate-x-full');
+        updateUserList();
+      }
+    }
+
+    function toggleEmojiPicker() {
+      const picker = document.getElementById('emojiPicker');
+      picker.classList.toggle('hidden');
+    }
+
+    function openSettings() {
+      document.getElementById('settingsModal').classList.remove('hidden');
+      document.getElementById('settingsModal').classList.add('flex');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.add('hidden');
+      document.getElementById('settingsModal').classList.remove('flex');
+    }
+
+    function clearChat() {
+      if (confirm('Are you sure you want to clear your chat history? This will only clear it for you.')) {
+        allMessages.innerHTML = `
+          <div class="flex justify-center">
+            <div class="bg-blue-500/20 text-blue-200 px-4 py-2 rounded-full text-sm flex items-center space-x-2">
+              <span>🎭</span>
+              <span>Chat cleared! Continue the conversation...</span>
+            </div>
+          </div>
+        `;
+        messageCount = 0;
+      }
+    }
+
+    function saveSettings() {
+      const nickname = document.getElementById('nicknameInput').value.trim();
+      const soundToggle = document.getElementById('soundToggle').checked;
+      const autoScrollToggle = document.getElementById('autoScrollToggle').checked;
+      const timestampToggle = document.getElementById('timestampToggle').checked;
+      
+      if (nickname && nickname !== currentUser?.nickname) {
+        socket.emit("change-nickname", nickname);
+        localStorage.setItem('controverse_nickname', nickname);
+      }
+      
+      soundEnabled = soundToggle;
+      autoScrollEnabled = autoScrollToggle;
+      showTimestamps = timestampToggle;
+      
+      localStorage.setItem('controverse_sound', soundEnabled.toString());
+      localStorage.setItem('controverse_autoscroll', autoScrollEnabled.toString());
+      localStorage.setItem('controverse_timestamps', showTimestamps.toString());
+      
+      // Update existing messages to show/hide timestamps
+      const timeElements = document.querySelectorAll('.text-xs.text-gray-400.mt-1');
+      timeElements.forEach(el => {
+        el.style.display = showTimestamps ? 'block' : 'none';
+      });
+      
+      closeSettings();
+      showNotification('Settings saved!', 'success');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Event Listeners
+    sendBtn.addEventListener("click", sendMessage);
+    
+    messageInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // Emoji picker events
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.emoji').forEach(emoji => {
+        emoji.addEventListener('click', () => {
+          const cursorPos = messageInput.selectionStart;
+          const textBefore = messageInput.value.substring(0, cursorPos);
+          const textAfter = messageInput.value.substring(cursorPos);
+          
+          messageInput.value = textBefore + emoji.textContent + textAfter;
+          messageInput.focus();
+          messageInput.setSelectionRange(cursorPos + emoji.textContent.length, cursorPos + emoji.textContent.length);
+          
+          // Trigger input event to update character count
+          const event = new Event('input', { bubbles: true });
+          messageInput.dispatchEvent(event);
         });
-    </script>
+      });
+    });
+
+    // Close emoji picker when clicking outside
+    document.addEventListener('click', (e) => {
+      const emojiPicker = document.getElementById('emojiPicker');
+      const emojiButton = e.target.closest('[onclick="toggleEmojiPicker()"]');
+      
+      if (!emojiPicker.contains(e.target) && !emojiButton && !emojiPicker.classList.contains('hidden')) {
+        emojiPicker.classList.add('hidden');
+      }
+    });
+
+    // Close settings modal when clicking outside
+    document.addEventListener('click', (e) => {
+      const modal = document.getElementById('settingsModal');
+      const modalContent = modal.querySelector('div.bg-white\\/10');
+      
+      if (modal.classList.contains('flex') && !modalContent.contains(e.target)) {
+        closeSettings();
+      }
+    });
+
+    // Close user list when clicking outside
+    document.addEventListener('click', (e) => {
+      const sidebar = document.getElementById('userListSidebar');
+      const userButton = e.target.closest('[onclick="toggleUserList()"]');
+      
+      if (!sidebar.contains(e.target) && !userButton && !sidebar.classList.contains('translate-x-full')) {
+        toggleUserList();
+      }
+    });
+
+    // Socket event handlers continued
+    socket.on("user-typing-start", (userData) => {
+      if (userData.nickname !== currentUser?.nickname) {
+        typingUsers.add(userData.nickname);
+        updateTypingIndicator();
+      }
+    });
+
+    socket.on("user-typing-stop", (userData) => {
+      typingUsers.delete(userData.nickname);
+      updateTypingIndicator();
+    });
+
+    socket.on("nickname-changed", (newNickname) => {
+      if (currentUser) {
+        currentUser.nickname = newNickname;
+      }
+      showNotification(`Your nickname is now: ${newNickname}`, 'success');
+    });
+
+    socket.on("nickname-update", (data) => {
+      showNotification(`${data.oldNickname} is now ${data.newNickname}`, 'info');
+      
+      // Update typing indicator if user was typing
+      if (typingUsers.has(data.oldNickname)) {
+        typingUsers.delete(data.oldNickname);
+        typingUsers.add(data.newNickname);
+        updateTypingIndicator();
+      }
+    });
+
+    socket.on("message-deleted", (messageId) => {
+      const messageElement = document.querySelector(`[data-id="${messageId}"]`);
+      if (messageElement) {
+        messageElement.style.animation = 'slideOutRight 0.3s ease-out';
+        setTimeout(() => {
+          if (messageElement.parentNode) {
+            messageElement.remove();
+          }
+        }, 300);
+      }
+    });
+
+    socket.on("message-edited", (data) => {
+      const messageElement = document.querySelector(`[data-id="${data.messageId}"] .msg-text`);
+      if (messageElement) {
+        messageElement.textContent = data.newText;
+        
+        // Add or update edited indicator
+        let editedSpan = messageElement.parentElement.querySelector('.text-xs.opacity-60');
+        if (!editedSpan) {
+          const editedIndicator = document.createElement('span');
+          editedIndicator.className = 'text-xs opacity-60 ml-2';
+          editedIndicator.textContent = '(edited)';
+          messageElement.insertAdjacentElement('afterend', editedIndicator);
+        }
+      }
+    });
+
+    socket.on("user-list", (users) => {
+      userList.innerHTML = '';
+      
+      if (users.length === 0) {
+        userList.innerHTML = '<div class="text-gray-400 text-sm text-center py-4">No other users online</div>';
+        return;
+      }
+      
+      users.forEach(user => {
+        const userElement = document.createElement('div');
+        userElement.className = 'flex items-center space-x-3 p-3 bg-white/10 rounded-lg hover:bg-white/20 transition-colors';
+        userElement.innerHTML = `
+          <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" style="background: ${user.color}">
+            ${user.id === currentUser?.id ? '👤' : '🎭'}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-white text-sm font-medium truncate">
+              ${user.nickname}${user.id === currentUser?.id ? ' (You)' : ''}
+            </div>
+            ${user.isTyping ? '<div class="text-blue-300 text-xs">typing...</div>' : ''}
+          </div>
+          ${user.id === currentUser?.id ? '' : `
+            <button class="text-blue-300 hover:text-blue-500 text-xs px-2 py-1 bg-white/10 rounded transition-colors" onclick="mentionUser('${user.nickname}')">
+              @
+            </button>
+          `}
+        `;
+        userList.appendChild(userElement);
+      });
+    });
+
+    // Mention user function
+    function mentionUser(nickname) {
+      const mention = `@${nickname} `;
+      const cursorPos = messageInput.selectionStart;
+      const textBefore = messageInput.value.substring(0, cursorPos);
+      const textAfter = messageInput.value.substring(cursorPos);
+      
+      messageInput.value = textBefore + mention + textAfter;
+      messageInput.focus();
+      messageInput.setSelectionRange(cursorPos + mention.length, cursorPos + mention.length);
+      
+      // Trigger input event
+      const event = new Event('input', { bubbles: true });
+      messageInput.dispatchEvent(event);
+      
+      // Close user list
+      toggleUserList();
+    }
+
+    // Connection monitoring
+    socket.on("connect_error", (error) => {
+      showNotification("Connection failed. Retrying...", "error");
+      connectionStatus.textContent = "Connection Error";
+      connectionStatus.className = "text-red-400 text-sm font-medium";
+      statusDot.className = "w-3 h-3 bg-red-400 rounded-full";
+    });
+
+    socket.on("reconnect", (attemptNumber) => {
+      showNotification(`Reconnected after ${attemptNumber} attempts!`, "success");
+    });
+
+    socket.on("reconnect_attempt", (attemptNumber) => {
+      connectionStatus.textContent = `Reconnecting... (${attemptNumber})`;
+      connectionStatus.className = "text-yellow-400 text-sm font-medium";
+      statusDot.className = "w-3 h-3 bg-yellow-400 rounded-full animate-pulse";
+    });
+
+    socket.on("reconnect_failed", () => {
+      showNotification("Failed to reconnect. Please refresh the page.", "error");
+      connectionStatus.textContent = "Connection Failed";
+      connectionStatus.className = "text-red-400 text-sm font-medium";
+      statusDot.className = "w-3 h-3 bg-red-400 rounded-full";
+    });
+
+    // Heartbeat to maintain connection
+    let heartbeatInterval;
+    
+    function startHeartbeat() {
+      heartbeatInterval = setInterval(() => {
+        if (socket.connected) {
+          socket.emit("ping", () => {
+            // Connection is alive
+          });
+        }
+      }, 30000);
+    }
+
+    function stopHeartbeat() {
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
+    }
+
+    socket.on("connect", () => {
+      startHeartbeat();
+    });
+
+    socket.on("disconnect", () => {
+      stopHeartbeat();
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      // Ctrl/Cmd + K to clear chat
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        clearChat();
+      }
+      
+      // Ctrl/Cmd + , to open settings
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
+        openSettings();
+      }
+      
+      // Escape to close modals/panels
+      if (e.key === 'Escape') {
+        const settingsModal = document.getElementById('settingsModal');
+        const userListSidebar = document.getElementById('userListSidebar');
+        const emojiPicker = document.getElementById('emojiPicker');
+        
+        if (settingsModal.classList.contains('flex')) {
+          closeSettings();
+        } else if (!userListSidebar.classList.contains('translate-x-full')) {
+          toggleUserList();
+        } else if (!emojiPicker.classList.contains('hidden')) {
+          toggleEmojiPicker();
+        } else if (replyTo) {
+          cancelReply();
+        }
+      }
+    });
+
+    // Auto-scroll to bottom when new messages arrive (if enabled)
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList' && mutation.addedNodes.length > 0 && autoScrollEnabled) {
+          // Check if user is near bottom before auto-scrolling
+          const isNearBottom = allMessages.scrollTop >= allMessages.scrollHeight - allMessages.clientHeight - 100;
+          if (isNearBottom) {
+            allMessages.scrollTop = allMessages.scrollHeight;
+          }
+        }
+      });
+    });
+
+    observer.observe(allMessages, { childList: true });
+
+    // Initialize the application
+    init();
+
+    // Expose functions globally for onclick handlers
+    window.toggleUserList = toggleUserList;
+    window.toggleEmojiPicker = toggleEmojiPicker;
+    window.openSettings = openSettings;
+    window.closeSettings = closeSettings;
+    window.saveSettings = saveSettings;
+    window.clearChat = clearChat;
+    window.setReply = setReply;
+    window.cancelReply = cancelReply;
+    window.deleteMessage = deleteMessage;
+    window.editMessage = editMessage;
+    window.mentionUser = mentionUser;
+
+    // Service Worker registration (for offline support)
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((registration) => {
+            console.log('SW registered: ', registration);
+          })
+          .catch((registrationError) => {
+            console.log('SW registration failed: ', registrationError);
+          });
+      });
+    }
+
+    // Visibility API to handle tab focus
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        // Clear any unread notifications when user comes back to tab
+        document.title = 'ControVerse - Enhanced Chat';
+      }
+    });
+
+    // Update page title with unread count
+    let unreadCount = 0;
+    const originalTitle = document.title;
+
+    socket.on("message", () => {
+      if (document.visibilityState === 'hidden') {
+        unreadCount++;
+        document.title = `(${unreadCount}) ${originalTitle}`;
+      }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        unreadCount = 0;
+        document.title = originalTitle;
+      }
+    });
+
+  </script>
 </body>
 </html>

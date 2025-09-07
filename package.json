@@ -1,21 +1,31 @@
 {
-  "name": "chatapp",
+  "name": "controverse-enhanced",
   "version": "1.0.0",
-  "description": "",
+  "description": "Enhanced real-time anonymous chat application",
   "main": "index.js",
-    "scripts": {
+  "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "chat",
+    "websocket",
+    "socket.io",
+    "real-time",
+    "anonymous"
+  ],
   "author": "Rupam Ghosh",
-  "license": "ISC",
-  "type": "commonjs",
+  "license": "MIT",
   "dependencies": {
-    "express": "^5.1.0",
-    "socket.io": "^4.8.1"
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "express-rate-limit": "^6.8.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
